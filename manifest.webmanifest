@@ -1,10 +1,16 @@
 {
-  "name": "Les menus de Johan",
-  "short_name": "Menus Johan",
+  "name": "Jojo cooker",
+  "short_name": "Jojo cooker",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f4ede2",
   "theme_color": "#b5563a",
   "lang": "fr",
-  "icons": [{ "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
 }

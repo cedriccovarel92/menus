@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Seules ces adresses Gmail peuvent lire et modifier les menus et la liste de courses.
+    // Remplacez-les par les vôtres (en minuscules), puis cliquez sur « Publier ».
+    function autorise() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in [
+          'votre.adresse@gmail.com',
+          'adresse.de.votre.conjoint@gmail.com'
+        ];
+    }
+
+    match /meals/{id} {
+      allow read, write: if autorise();
+    }
+    match /checks/{id} {
+      allow read, write: if autorise();
+    }
+    match /extras/{id} {
+      allow read, write: if autorise();
+    }
+    match /foods/{id} {
+      allow read, write: if autorise();
+    }
+    match /sweets/{id} {
+      allow read, write: if autorise();
+    }
+  }
+}
