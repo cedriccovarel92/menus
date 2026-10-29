@@ -1,10 +1,5 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
+// Configuration de l'accès partagé de Jojo cooker
+window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyDSxSZIwSWm7mfxygmJfhCRHuKYlbYo58s",
   authDomain: "jojo-cooker.firebaseapp.com",
   projectId: "jojo-cooker",
@@ -13,11 +8,7 @@ const firebaseConfig = {
   appId: "1:291337384149:web:baf389b05ceedefb31f25c"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
-// 2. Les adresses Gmail autorisées. Mettez les MÊMES dans firestore.rules :
-//    c'est ce fichier-là qui protège réellement les données.
+// Les deux adresses Gmail autorisées (les mêmes que dans les règles Firestore)
 window.ALLOWED_EMAILS = [
   "cedric.covarel.92@gmail.com",
   "aurelialaon@gmail.com"
