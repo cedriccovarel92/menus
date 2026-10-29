@@ -1,26 +1,24 @@
-// ─────────────────────────────────────────────────────────────
-// Configuration de l'accès partagé de Jojo cooker (voir README, étape par étape)
-// ─────────────────────────────────────────────────────────────
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-// 1. Collez ici l'objet « firebaseConfig » de votre projet Firebase
-//    (Console Firebase → ⚙ Paramètres du projet → Vos applications → Web).
-//    Tant que la valeur est null, l'appli fonctionne sans connexion
-//    et garde les données sur chaque appareil.
-window.FIREBASE_CONFIG = null;
-/* Exemple :
-window.FIREBASE_CONFIG = {
-  apiKey: "AIza...",
-  authDomain: "menus-johan.firebaseapp.com",
-  projectId: "menus-johan",
-  storageBucket: "menus-johan.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abc123"
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDSxSZIwSWm7mfxygmJfhCRHuKYlbYo58s",
+  authDomain: "jojo-cooker.firebaseapp.com",
+  projectId: "jojo-cooker",
+  storageBucket: "jojo-cooker.firebasestorage.app",
+  messagingSenderId: "291337384149",
+  appId: "1:291337384149:web:baf389b05ceedefb31f25c"
 };
-*/
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
 // 2. Les adresses Gmail autorisées. Mettez les MÊMES dans firestore.rules :
 //    c'est ce fichier-là qui protège réellement les données.
 window.ALLOWED_EMAILS = [
-  "votre.adresse@gmail.com",
-  "adresse.de.votre.conjoint@gmail.com"
+  "cedric.covarel.92@gmail.com",
+  "aurelialaon@gmail.com"
 ];
