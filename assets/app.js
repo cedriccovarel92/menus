@@ -292,9 +292,9 @@ function portionOf(m){
 
 /* ---------- État & stockage ---------- */
 const LS='menus-johan-v1';
-const state={tab:'calendrier',week:BASE_WEEK,dayFilter:null,imported:{},checks:{},extras:{},foods:{},sweets:{},db:null,files:[],pending:null,busy:false,swap:null,cook:null};
-function loadLocal(){try{const v=JSON.parse(localStorage.getItem(LS)||'{}');state.imported=v.meals||{};state.checks=v.checks||{};state.extras=v.extras||{};state.foods=v.foods||{};state.sweets=v.sweets||{}}catch(e){}}
-function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({meals:state.imported,checks:state.checks,extras:state.extras,foods:state.foods,sweets:state.sweets}))}catch(e){}}
+const state={tab:'calendrier',week:BASE_WEEK,dayFilter:null,imported:{},checks:{},extras:{},foods:{},sweets:{},ratings:{},db:null,files:[],pending:null,busy:false,swap:null,cook:null};
+function loadLocal(){try{const v=JSON.parse(localStorage.getItem(LS)||'{}');state.imported=v.meals||{};state.checks=v.checks||{};state.extras=v.extras||{};state.foods=v.foods||{};state.sweets=v.sweets||{};state.ratings=v.ratings||{}}catch(e){}}
+function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({meals:state.imported,checks:state.checks,extras:state.extras,foods:state.foods,sweets:state.sweets,ratings:state.ratings}))}catch(e){}}
 loadLocal();
 const getMeal=(date,slot)=>{const k=`${date}_${slot}`,im=state.imported[k];if(im)return im.empty?null:im;return BASE[k]||null};
 const weekHasMeals=mon=>{for(let i=0;i<7;i++)for(const s of ['midi','soir'])if(getMeal(addDays(mon,i),s))return true;return false};
@@ -316,7 +316,8 @@ function subscribe(db){
   const u3=db.collection('extras').onSnapshot(snap=>{const x={};snap.docs.forEach(d=>{const v=d.data();if(v&&v.week&&v.nom)x[d.id]=v});state.extras=x;saveLocal();if(state.tab==='courses')rerender()},()=>{});
   const u4=db.collection('foods').onSnapshot(snap=>{const x={};snap.docs.forEach(d=>{const v=d.data();if(v&&v.nom)x[d.id]=v});state.foods=x;saveLocal();if((state.tab==='johan'||state.tab==='recettes')&&!state.editing)rerender()},()=>{});
   const u5=db.collection('sweets').onSnapshot(snap=>{const x={};snap.docs.forEach(d=>{const v=d.data();if(v&&v.titre)x[d.id]=v});state.sweets=x;saveLocal();if(state.tab==='sucre'&&!state.editing)rerender();if(state.cook)renderCook()},()=>{});
-  return [u1,u2,u3,u4,u5]}
+  const u6=db.collection('ratings').onSnapshot(snap=>{const x={};snap.docs.forEach(d=>{const v=d.data();if(v&&v.titre)x[d.id]=v});state.ratings=x;saveLocal();if(['biblio','recettes','sucre'].includes(state.tab)&&!state.editing&&!state.libPlan)rerender()},()=>{});
+  return [u1,u2,u3,u4,u5,u6]}
 let migrating=false;
 async function migrateChecks(db,list){
   const old=list.filter(x=>!x.id.includes('~')&&x.v&&x.v.items);if(!old.length||migrating)return;migrating=true;
@@ -442,18 +443,18 @@ function sweetCard(s){
     <div class="eactions" style="margin-top:12px"><button class="btn primary" data-ssave="${s.id}">Enregistrer</button><button class="btn ghost" data-ecancel>Annuler</button></div></div></article>`;
   const ing=s.ingredientsAdultes||[],st=s.etapes||[],tips=s.conseils||[],al=[...new Set(ing.map(allergenOf).filter(Boolean))];
   return `<article class="rcard" id="s-${s.id}"><header><div class="meta"><span class="pill sweet">${esc(s.type||'Dessert')}</span>${s.temps?`<span>${esc(s.temps)}</span>`:''}${s.rendement?`<span>· ${esc(s.rendement)}</span>`:''}
-     ${s.base?'':`<span class="pill imp">${s.orig?'Modifiée':'Ajoutée'}</span>`}</div><h2>${esc(s.titre)}</h2>
+     ${s.base?'':`<span class="pill imp">${s.orig?'Modifiée':'Ajoutée'}</span>`}</div><h2>${esc(s.titre)}</h2>${starsHTML(ratingOf(s.titre),`data-rk="sweet" data-rid="${s.id}"`,true)}
      <div class="baby">${esc(s.sucre||'Sans sucre ajouté')}</div>${s.note?`<div class="notesrc">${esc(s.note)}</div>`:''}</header>
     <figure class="plate">${plateSVG(sweetItems(s),s.kind||'bowl',s.id,true)}<figcaption><div class="eyebrow">Dès 12 mois</div>${al.length?`<p style="margin:6px 0 0">Contient : ${al.map(a=>`<span class="pill al">${a}</span>`).join(' ')}</p>`:''}</figcaption></figure>
     <div class="rbody"><div><h4>Ingrédients</h4>${ing.length?`<ul class="plainul">${ing.map(i=>`<li>${esc(i)}</li>`).join('')}</ul>`:'<p class="muted">Pas d\'ingrédients.</p>'}</div>
-     ${st.length?`<div><h4>Préparation</h4><ol class="steps">${st.map(x=>`<li><div>${esc(x)}</div></li>`).join('')}</ol></div>`:''}
+     ${st.length?`<div><h4>Préparation</h4><ol class="steps">${st.map(x=>`<li><div>${esc(x)}${stepTimers(x,s.titre)}</div></li>`).join('')}</ol></div>`:''}
      ${tips.length?`<div class="tips"><h4>Conseils pour Johan</h4><ul>${tips.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></div>`:''}
      <div class="rfoot"><button class="btn primary" data-cooks="${s.id}">Cuisiner</button><button class="btn" data-sadd="${s.id}">Ajouter aux courses</button><button class="btn" data-sedit="${s.id}">Modifier</button>
       ${s.base?'':`<button class="btn danger" data-sdel="${s.id}" data-lbl="${s.orig?'Revenir à l\'origine':'Supprimer'}">${s.orig?'Revenir à l\'origine':'Supprimer'}</button>`}</div></div></article>`}
 
 /* ---------- Mode cuisine & minuteurs ---------- */
 const timers=[];let tick=null,actx=null,wlock=null;
-function recipeById(kind,id){if(kind==='sweet')return allSweets()[id]||null;const [d,s]=id.split('_');return getMeal(d,s)}
+function recipeById(kind,id){if(kind==='sweet')return allSweets()[id]||null;if(kind==='lib')return libRecipe(id);const [d,s]=id.split('_');return getMeal(d,s)}
 function openCook(kind,id){state.cook={kind,id,step:0};document.body.classList.add('cooking');renderCook();lockScreen()}
 function closeCook(){state.cook=null;document.body.classList.remove('cooking');const c=document.getElementById('cook');c.hidden=true;c.innerHTML='';try{wlock&&wlock.release()}catch(e){}wlock=null;renderTimerbar()}
 async function lockScreen(){try{if('wakeLock' in navigator)wlock=await navigator.wakeLock.request('screen')}catch(e){wlock=null}}
@@ -494,6 +495,51 @@ function stopBtn(b){b.onclick=()=>{const k=timers.findIndex(t=>t.id===b.dataset.
 function renderTimers(){const a=document.getElementById('ctimers');if(a){a.innerHTML=timersHTML();a.querySelectorAll('[data-tstop]').forEach(stopBtn)}renderTimerbar()}
 function renderTimerbar(){const tb=document.getElementById('timerbar');if(!tb)return;const show=timers.length>0&&!state.cook;tb.hidden=!show;if(show){tb.innerHTML=timersHTML();tb.querySelectorAll('[data-tstop]').forEach(stopBtn)}}
 document.addEventListener('keydown',e=>{if(!state.cook||e.target.tagName==='INPUT')return;if(e.key==='Escape')closeCook();else if(e.key==='ArrowRight')document.querySelector('[data-cnext]')?.click();else if(e.key==='ArrowLeft')document.querySelector('[data-cprev]')?.click()});
+
+
+/* ---------- Notes & bibliothèque ---------- */
+const rKey=t=>'r-'+norm(t).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,90);
+const clean=o=>JSON.parse(JSON.stringify(o));
+function starsHTML(v,attrs,big){let h=`<div class="stars${big?' big':''}" role="group" aria-label="Note sur 5">`;for(let n=1;n<=5;n++)h+=`<button type="button" class="star${n<=v?' on':''}" ${attrs} data-star="${n}" aria-label="${n} étoile${n>1?'s':''} sur 5" aria-pressed="${n<=v}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z"/></svg></button>`;return h+'</div>'}
+function ratingOf(t){const r=state.ratings[rKey(t)];return r?r.stars||0:0}
+function setRating(kind,id,stars){
+  let rec,titre,data;
+  if(kind==='sweet'){rec=allSweets()[id];if(!rec)return;titre=rec.titre;data={titre,kind:'sweet',sweetId:id}}
+  else if(kind==='lib'){const r=state.ratings[id];if(!r)return;titre=r.titre;data={...r}}
+  else{const [d,sl]=id.split('_');rec=getMeal(d,sl);if(!rec)return;titre=rec.titre;
+    const {_i,_id,date,slot,base,empty,moved,modifie,...rest}=rec;data={titre,kind:'meal',recette:clean(rest),lastDate:d}}
+  const k=kind==='lib'?id:rKey(titre),cur=state.ratings[k];
+  if(cur&&cur.stars===stars&&kind!=='lib'||stars===0){delete state.ratings[k];saveLocal();if(state.db)queued('r'+k,()=>state.db.collection('ratings').doc(k).delete());return 0}
+  const v=clean({...(cur||{}),...data,stars,at:new Date().toISOString(),by:store.user?firstName(store.user):''});
+  state.ratings[k]=v;saveLocal();if(state.db)queued('r'+k,()=>state.db.collection('ratings').doc(k).set(v));return stars}
+function libRecipe(id){const r=state.ratings[id];if(!r)return null;return r.kind==='sweet'?allSweets()[r.sweetId]||null:(r.recette?{...r.recette,titre:r.titre}:null)}
+function renderLibrary(){
+  const sort=state.libSort||'stars',kind=state.libKind||'all',min=state.libMin||0;
+  let list=Object.entries(state.ratings).map(([id,r])=>({id,...r})).filter(r=>r.stars>0);
+  const counts={all:list.length,meal:list.filter(r=>r.kind!=='sweet').length,sweet:list.filter(r=>r.kind==='sweet').length};
+  list=list.filter(r=>(kind==='all'||(kind==='sweet')===(r.kind==='sweet'))&&r.stars>=min);
+  list.sort((a,b)=>sort==='stars'?(b.stars-a.stars)||a.titre.localeCompare(b.titre,'fr'):sort==='low'?(a.stars-b.stars)||a.titre.localeCompare(b.titre,'fr'):sort==='recent'?String(b.at).localeCompare(String(a.at)):a.titre.localeCompare(b.titre,'fr'));
+  let h=`<div class="sweethead"><div><span class="eyebrow">Vos recettes notées</span><h2>Bibliothèque de recettes</h2>
+    <p class="muted">Chaque recette notée d'au moins une étoile arrive ici. Replacez-la dans le planning en deux touches.</p></div></div>
+   <div class="libbar"><div class="chips" role="group" aria-label="Type">${[['all','Toutes'],['meal','Repas'],['sweet','Plaisir sucré']].map(([k,l])=>`<button class="chip" data-lk="${k}" aria-pressed="${kind===k}">${l} · ${counts[k]}</button>`).join('')}</div>
+    <div class="libsel"><label for="libSort" class="eyebrow">Trier</label><select id="libSort"><option value="stars" ${sort==='stars'?'selected':''}>Mieux notées d'abord</option><option value="low" ${sort==='low'?'selected':''}>Moins bien notées d'abord</option><option value="recent" ${sort==='recent'?'selected':''}>Notées récemment</option><option value="alpha" ${sort==='alpha'?'selected':''}>Ordre alphabétique</option></select>
+    <label for="libMin" class="eyebrow">Au moins</label><select id="libMin">${[0,3,4,5].map(n=>`<option value="${n}" ${min===n?'selected':''}>${n?n+' étoile'+(n>1?'s':''):'Toutes les notes'}</option>`).join('')}</select></div></div>`;
+  if(!counts.all)return h+`<div class="empty-week"><h3>Aucune recette notée pour l'instant</h3><p class="muted">Ouvrez une fiche dans Recettes ou Plaisir sucré et touchez les étoiles sous son titre.</p><button class="btn primary" data-go="recettes">Voir les recettes</button></div>`;
+  if(!list.length)return h+`<p class="muted">Aucune recette ne correspond à ce filtre.</p>`;
+  h+='<div class="libgrid">';
+  list.forEach(r=>{const rec=libRecipe(r.id),sweet=r.kind==='sweet';
+    const items=rec?(sweet?sweetItems(rec):portionOf({...rec,slot:'midi'})):[];
+    h+=`<article class="libcard" id="lib-${r.id}"><div class="libtop"><div class="libpl">${rec?plateSVG(items,rec.kind||(sweet?'bowl':'plate'),r.id,false):''}</div>
+      <div style="min-width:0"><div class="meta"><span class="pill ${sweet?'sweet':''}">${sweet?esc(rec&&rec.type||'Sucré'):'Repas'}</span>${rec&&rec.temps?`<span class="muted">${esc(rec.temps)}</span>`:''}</div>
+      <h3>${esc(r.titre)}</h3>${starsHTML(r.stars,`data-rk="lib" data-rid="${r.id}"`)}
+      ${!sweet&&rec&&rec.bebe?`<div class="baby small">Johan : ${esc(rec.bebe)}</div>`:''}<div class="muted small">${r.by?'Noté par '+esc(r.by):''}${r.lastDate?`${r.by?' · ':''}dernière fois le ${fmtDay(r.lastDate)}`:''}</div></div></div>`;
+    if(state.libPlan===r.id){const d=state.libDate||'',sl=state.libSlot||'midi',ex=d?getMeal(d,sl):null;
+      h+=`<form class="planf" data-planf="${r.id}"><label>Date<input type="date" id="planDate" value="${d}" required></label><label>Repas<select id="planSlot"><option value="midi" ${sl==='midi'?'selected':''}>Midi</option><option value="soir" ${sl==='soir'?'selected':''}>Soir</option></select></label>
+        ${ex?`<div class="warn">Remplace « ${esc(ex.titre)} »</div>`:''}<div class="eactions"><button class="btn primary" type="submit" ${d?'':'disabled'}>Ajouter au planning</button><button class="btn ghost" type="button" data-planx>Annuler</button></div></form>`}
+    h+=`<div class="rfoot">${!sweet&&rec?`<button class="btn primary" data-plan="${r.id}">Planifier</button>`:''}${rec?`<button class="btn" data-cookl="${r.id}">Cuisiner</button>`:''}${sweet?`<button class="btn" data-go="sucre">Voir dans Plaisir sucré</button>`:''}</div></article>`});
+  return h+'</div>'}
+function stepTimers(st,titre){const short=String(titre||'').split(/[,&]/)[0].trim();const t=findTimers(st);if(!t.length)return '';
+  return `<span class="steptimers">${t.map(x=>`<button type="button" class="tchip sm" data-tgo2="${x.mins}" data-tl="${esc(short+' · '+x.label)}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>${esc(x.label)}</button>`).join('')}</span>`}
 
 /* ---------- Déplacer / échanger ---------- */
 async function moveMeal(src,dst){if(src===dst)return '';const [sd,ss]=src.split('_'),[dd,ds]=dst.split('_');const a=getMeal(sd,ss),b=getMeal(dd,ds);if(!a)return '';
@@ -553,7 +599,7 @@ function renderJohan(){
 /* ---------- Rendu ---------- */
 const main=document.getElementById('main');
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,3200)}
-function setTab(t,opts={}){state.tab=t;state.editing=null;state.swap=null;if(t!=='importer')state.importHint=null;try{history.replaceState(null,'','#'+t)}catch(e){}render();if(!opts.keepScroll)window.scrollTo({top:0})}
+function setTab(t,opts={}){state.tab=t;state.editing=null;state.swap=null;state.libPlan=null;if(t!=='importer')state.importHint=null;try{history.replaceState(null,'','#'+t)}catch(e){}render();if(!opts.keepScroll)window.scrollTo({top:0})}
 document.querySelectorAll('.tabbar button').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
 function weekbar(){
   const isCur=mondayOf(TODAY)===state.week;
@@ -567,6 +613,7 @@ function render(){
   else if(state.tab==='courses')main.innerHTML=weekbar()+renderShopping();
   else if(state.tab==='recettes')main.innerHTML=weekbar()+renderRecipes();
   else if(state.tab==='sucre')main.innerHTML=renderSweets();
+  else if(state.tab==='biblio')main.innerHTML=renderLibrary();
   else if(state.tab==='johan')main.innerHTML=weekbar()+renderJohan();
   else renderImport();
   main.querySelectorAll('[data-wk]').forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.wk;state.editing=null;state.week=v==='today'?mondayOf(TODAY):addDays(state.week,+v);state.dayFilter=null;render()}));
@@ -583,7 +630,7 @@ function renderCalendar(){
       if(!m){if(sw&&sw.src)h+=`<button class="meal empty tgt" data-sw="${id}"><span class="pill ${s}">${lab}</span> Déposer ici</button>`;
         else h+=`<div class="meal empty"><span class="pill ${s}">${lab}</span> Rien de prévu${state.imported[id]&&state.imported[id].empty&&BASE[id]?` · <button class="linkbtn" data-restore="${id}">Rétablir le repas prévu</button>`:''}</div>`;continue}
       const cls=sw?(sw.src===id?' sel':sw.src?' tgt':''):'';
-      h+=`<button class="meal${cls}" ${sw?`data-sw="${id}"`:`data-open="${id}"`}><span class="slot"><span class="pill ${s}">${lab}</span>${m.base?'':`<span class="pill imp">${m.moved?'Déplacé':m.modifie?'Modifié':'Importé'}</span>`}${sw&&sw.src===id?'<span class="pill">Sélectionné</span>':''}</span>
+      h+=`<button class="meal${cls}" ${sw?`data-sw="${id}"`:`data-open="${id}"`}><span class="slot"><span class="pill ${s}">${lab}</span>${m.base?'':`<span class="pill imp">${m.fromLibrary?'Bibliothèque':m.moved?'Déplacé':m.modifie?'Modifié':'Importé'}</span>`}${sw&&sw.src===id?'<span class="pill">Sélectionné</span>':''}</span>
         <span class="t">${esc(m.titre)}</span><span class="b">Johan : ${esc(m.bebe||'portion à définir')} · 200 g</span>
         <span class="pl">${plateSVG(portionOf(m),m.kind||'plate',date+s,false)}</span></button>`}
     h+='</section>'}
@@ -605,12 +652,12 @@ function recipeCard(m){
     <div class="eactions" style="margin-top:12px"><button class="btn primary" data-esave="${m._id}">Enregistrer la fiche</button><button class="btn ghost" data-ecancel>Annuler</button></div></div></article>`;
   const items=portionOf(m),steps=Array.isArray(m.etapes)?m.etapes:[],ing=Array.isArray(m.ingredientsAdultes)?m.ingredientsAdultes:[],tips=Array.isArray(m.conseils)?m.conseils:[];
   let h=`<article class="rcard" id="r-${m._id}"><header>
-    <div class="meta"><span class="pill ${m.slot}">${JOURS[m._i]} ${m.slot==='midi'?'midi':'soir'}</span>${m.temps?`<span>${esc(m.temps)}</span>`:''}${m.base?'':`<span class="pill imp">${m.modifie?'Modifiée':m.recetteFournie===false?'Fiche proposée par Claude':m.source==='photo'?'Depuis une photo':'Importé'}</span>`}</div>
-    <h2>${esc(m.titre)}</h2><div class="baby">Johan : ${esc(m.bebe||'portion à définir')}</div>${m.note?`<div class="notesrc">${esc(m.note)}</div>`:''}</header>
+    <div class="meta"><span class="pill ${m.slot}">${JOURS[m._i]} ${m.slot==='midi'?'midi':'soir'}</span>${m.temps?`<span>${esc(m.temps)}</span>`:''}${m.base?'':`<span class="pill imp">${m.modifie?'Modifiée':m.fromLibrary?'Bibliothèque':m.recetteFournie===false?'Fiche proposée par Claude':m.source==='photo'?'Depuis une photo':'Importé'}</span>`}</div>
+    <h2>${esc(m.titre)}</h2>${starsHTML(ratingOf(m.titre),`data-rk="meal" data-rid="${m._id}"`,true)}<div class="baby">Johan : ${esc(m.bebe||'portion à définir')}</div>${m.note?`<div class="notesrc">${esc(m.note)}</div>`:''}</header>
     ${portionFigure(m)}<div class="rbody">`;
   h+=`<div class="ing"><div><h4>Ingrédients · 2 adultes + Johan</h4>${ing.length?`<ul>${ing.map(i=>`<li>${esc(i)}</li>`).join('')}</ul>`:'<p class="muted">Pas de liste d\'ingrédients dans le texte importé.</p>'}</div>
     <div class="johan"><h4>Portion de Johan</h4><ul>${items.map(i=>`<li><span>${esc(i.nom)}${tracking()&&!isTasted(foodId(i.nom))?' <span class="pill new">nouveau</span>':''}</span><span>${i.g} g</span></li>`).join('')}<li><span>Total</span><span>${items.reduce((s,i)=>s+i.g,0)} g</span></li></ul></div></div>`;
-  if(steps.length)h+=`<div><h4>Préparation</h4><ol class="steps">${steps.map((s,i)=>i===m.etapeBebe?`<li class="bb"><div><b>Portion de Johan, avant d'assaisonner</b>${esc(s)}</div></li>`:`<li><div>${esc(s)}</div></li>`).join('')}</ol></div>`;
+  if(steps.length)h+=`<div><h4>Préparation</h4><ol class="steps">${steps.map((s,i)=>i===m.etapeBebe?`<li class="bb"><div><b>Portion de Johan, avant d'assaisonner</b>${esc(s)}${stepTimers(s,m.titre)}</div></li>`:`<li><div>${esc(s)}${stepTimers(s,m.titre)}</div></li>`).join('')}</ol></div>`;
   else h+=`<p class="muted">Pas d'étapes dans le texte importé. Collez la recette dans l'onglet Importer pour compléter la fiche.</p>`;
   if(tips.length)h+=`<div class="tips"><h4>Texture et sécurité pour Johan</h4><ul>${tips.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></div>`;
   const orig=!m.base&&BASE[m._id];
@@ -972,6 +1019,21 @@ function bind(){
   main.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{const v=b.dataset.day;state.dayFilter=v==='all'?'all':+v;render()});
   main.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const back=!!BASE[b.dataset.del];if(b.dataset.confirm){deleteMeal(b.dataset.del);toast(back?'Fiche d\'origine rétablie':'Repas retiré du calendrier')}else{b.dataset.confirm='1';b.textContent='Confirmer';setTimeout(()=>{if(b.isConnected){delete b.dataset.confirm;b.textContent=b.dataset.lbl}},4000)}});
   main.querySelectorAll('[data-cook]').forEach(b=>b.onclick=()=>openCook('meal',b.dataset.cook));
+  main.querySelectorAll('[data-star]').forEach(b=>b.onclick=()=>{const v=setRating(b.dataset.rk,b.dataset.rid,+b.dataset.star);rerender();
+    toast(v?`Noté ${v} étoile${v>1?'s':''} · ajouté à la Bibliothèque`:'Note retirée')});
+  main.querySelectorAll('[data-tgo2]').forEach(b=>b.onclick=()=>startTimer(+b.dataset.tgo2,b.dataset.tl));
+  main.querySelectorAll('[data-lk]').forEach(b=>b.onclick=()=>{state.libKind=b.dataset.lk;rerender()});
+  const ls=document.getElementById('libSort');if(ls)ls.onchange=()=>{state.libSort=ls.value;rerender()};
+  const lm=document.getElementById('libMin');if(lm)lm.onchange=()=>{state.libMin=+lm.value;rerender()};
+  main.querySelectorAll('[data-cookl]').forEach(b=>b.onclick=()=>openCook('lib',b.dataset.cookl));
+  main.querySelectorAll('[data-plan]').forEach(b=>b.onclick=()=>{state.libPlan=b.dataset.plan;state.libDate='';state.libSlot='midi';rerender();requestAnimationFrame(()=>document.getElementById('planDate')?.focus())});
+  main.querySelectorAll('[data-planx]').forEach(b=>b.onclick=()=>{state.libPlan=null;rerender()});
+  const pd=document.getElementById('planDate'),ps=document.getElementById('planSlot');
+  if(pd)pd.onchange=()=>{state.libDate=pd.value;rerender()};if(ps)ps.onchange=()=>{state.libSlot=ps.value;rerender()};
+  main.querySelectorAll('[data-planf]').forEach(f=>f.onsubmit=async e=>{e.preventDefault();const id=f.dataset.planf,r=state.ratings[id],rec=libRecipe(id),d=state.libDate,sl=state.libSlot||'midi';if(!r||!rec||!d)return;
+    await saveMeal(clean({...rec,titre:r.titre,date:d,slot:sl,base:false,fromLibrary:true,addedAt:new Date().toISOString()}));
+    state.ratings[id]={...r,lastDate:d};if(state.db)queued('r'+id,()=>state.db.collection('ratings').doc(id).set(clean(state.ratings[id])));saveLocal();
+    state.libPlan=null;state.week=mondayOf(d);state.dayFilter=null;setTab('calendrier');toast(`${r.titre.split(/[,&]/)[0]} ajouté : ${fmtLong(d).toLowerCase()} ${sl}`)});
   main.querySelectorAll('[data-cooks]').forEach(b=>b.onclick=()=>openCook('sweet',b.dataset.cooks));
   main.querySelectorAll('[data-swap]').forEach(b=>b.onclick=()=>{state.swap=state.swap?null:{src:null};rerender()});
   main.querySelectorAll('[data-sw]').forEach(b=>b.onclick=async()=>{const id=b.dataset.sw,sw=state.swap;if(!sw)return;
@@ -1009,5 +1071,5 @@ function bind(){
   const un=main.querySelector('[data-uncheck]');if(un)un.onclick=()=>{if(!un.dataset.confirm){un.dataset.confirm='1';un.textContent='Confirmer : tout décocher';setTimeout(()=>{if(un.isConnected){delete un.dataset.confirm;un.textContent='Tout décocher'}},4000);return}
     Object.keys(state.checks[state.week]||{}).forEach(k=>setCheck(state.week,k,false));rerender()};
 }
-const h0=(location.hash||'').slice(1);if(['calendrier','courses','recettes','sucre','johan','importer'].includes(h0))state.tab=h0;
+const h0=(location.hash||'').slice(1);if(['calendrier','courses','recettes','biblio','sucre','johan','importer'].includes(h0))state.tab=h0;
 render();initDb();
