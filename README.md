@@ -18,9 +18,12 @@ Elle n'a pas d'étape de build : HTML, CSS et JavaScript simples. Un projet Fire
   - les étapes, dont celle du prélèvement de sa portion ;
   - les conseils de sécurité.
 
+  Chaque étape qui contient une durée (« 20 min », « 1 h 15 ») affiche un bouton minuteur. Les étoiles sous le titre notent la recette.
+
   Deux boutons sur chaque fiche :
   - **Cuisiner** : mode cuisine, une étape à la fois en grand, avec minuteurs détectés dans le texte (« 15 min », « 1 h 15 »…) et sonnerie. L'écran reste allumé.
   - **Modifier la fiche** : corrige tout ce qui est sur la fiche.
+- **Biblio (Bibliothèque de recettes)** : toutes les recettes notées (étoiles sous le titre de chaque fiche), triables par note, par date ou par ordre alphabétique, filtrables par type et note minimale. **Planifier** replace une recette à la date et au repas choisis ; **Cuisiner** ouvre le mode cuisine.
 - **Sucré (Plaisir sucré)** : desserts et goûters pour Johan, sans sucre ajouté, sans date.
   - 8 recettes de base.
   - Ajout des vôtres par photo ou par texte.
@@ -54,7 +57,7 @@ Si vous aviez déjà publié l'ancienne version, remplacez simplement les fichie
    - Dans **Règles**, collez le contenu de `firestore.rules` avec vos deux adresses Gmail, puis cliquez sur **Publier**.
 4. **Paramètres du projet → Vos applications → Web `</>`** : copiez l'objet `firebaseConfig`.
 
-> **Mise à jour depuis la version précédente** : recollez `firestore.rules`. La nouvelle version ajoute trois collections : `extras` (articles libres), `foods` (aliments goûtés) et `sweets` (Plaisir sucré). Sans ces règles, ces trois fonctions restent sur l'appareil.
+> **Mise à jour depuis la version précédente** : recollez `firestore.rules`. Les collections utilisées sont `meals`, `checks`, `extras` (articles libres), `foods` (aliments goûtés), `sweets` (Plaisir sucré) et `ratings` (notes et bibliothèque). Sans ces règles, ces trois fonctions restent sur l'appareil.
 
 ### 3. Brancher le site
 

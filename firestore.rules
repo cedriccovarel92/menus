@@ -28,5 +28,8 @@ service cloud.firestore {
     match /sweets/{id} {
       allow read, write: if autorise();
     }
+    match /ratings/{id} {
+      allow read, write: if autorise();
+    }
   }
 }
