@@ -350,8 +350,13 @@ function setCheck(week,k,on){
 function gateMsg(t){const el=document.getElementById('gateMsg');if(el)el.textContent=t}
 function authErr(e){const c=e&&e.code||'';
   if(c==='auth/unauthorized-domain')return "Ce site n'est pas autorisé dans Firebase : ajoutez son adresse dans Authentication → Paramètres → Domaines autorisés.";
-  if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request')return 'Connexion annulée.';
-  return 'La connexion a échoué ('+(c||'erreur inconnue')+').'}
+  if(c==='auth/operation-not-allowed')return "La connexion Google n'est pas activée dans Firebase : Authentication → Sign-in method → Google → Activer, puis Enregistrer.";
+  if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request')return 'Connexion annulée. Touchez à nouveau le bouton.';
+  if(c==='auth/popup-blocked')return 'La fenêtre Google a été bloquée. Essayez « Autre méthode de connexion ».';
+  if(c==='auth/network-request-failed')return 'Pas de connexion internet. Vérifiez le réseau puis réessayez.';
+  if(c==='auth/invalid-api-key'||c==='auth/api-key-not-valid.-please-pass-a-valid-api-key.')return 'La clé apiKey de firebase-config.js est incorrecte : recopiez-la depuis Firebase.';
+  if(c==='auth/web-storage-unsupported')return 'Ce navigateur bloque le stockage nécessaire à la connexion. Ouvrez le site dans Safari ou Chrome, hors navigation privée stricte.';
+  return 'La connexion a échoué ('+(c||(e&&e.message)||'erreur inconnue')+').'}
 async function initFirebase(cfg){
   const gate=document.getElementById('gate');document.body.classList.add('locked');gate.hidden=false;setSync(false);
   const b='https://www.gstatic.com/firebasejs/10.12.2/';
@@ -362,16 +367,25 @@ async function initFirebase(cfg){
   db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
   const auth=firebase.auth();
   auth.getRedirectResult().catch(e=>gateMsg(authErr(e)));
-  const btn=document.getElementById('gateBtn');btn.hidden=false;
-  btn.onclick=async()=>{const pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:'select_account'});gateMsg('Connexion…');
-    try{await auth.signInWithPopup(pr)}catch(e){if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')return auth.signInWithRedirect(pr);gateMsg(authErr(e))}};
+  const btn=document.getElementById('gateBtn'),alt=document.getElementById('gateAlt');btn.hidden=false;
+  const mkProv=()=>{const pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:'select_account'});return pr};
+  const ua=navigator.userAgent||'';
+  if(/FBAN|FBAV|Instagram|Line\/|; wv\)|Snapchat|Messenger|GSA\//.test(ua))gateMsg("Ce navigateur intégré (ouvert depuis une appli) bloque la connexion Google. Ouvrez le site dans Safari ou Chrome : menu ⋯ → « Ouvrir dans le navigateur ».");
+  let wait=null;
+  btn.onclick=async()=>{gateMsg('Ouverture de la fenêtre Google…');clearTimeout(wait);
+    wait=setTimeout(()=>{if(!auth.currentUser){alt.hidden=false;gateMsg("Rien ne s'ouvre ? Autorisez les fenêtres pop-up pour ce site, ou touchez « Autre méthode de connexion ».")}},7000);
+    try{await auth.signInWithPopup(mkProv());clearTimeout(wait)}
+    catch(e){clearTimeout(wait);console.error('Connexion Google',e);alt.hidden=false;
+      if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment'){gateMsg('Redirection vers Google…');return auth.signInWithRedirect(mkProv())}
+      gateMsg(authErr(e))}};
+  alt.onclick=()=>{gateMsg('Redirection vers Google…');auth.signInWithRedirect(mkProv()).catch(e=>gateMsg(authErr(e)))};
   auth.onAuthStateChanged(async u=>{
     store.unsubs.forEach(f=>{try{f()}catch(e){}});store.unsubs=[];state.db=null;store.user=null;
     if(!u){document.body.classList.add('locked');gate.hidden=false;setSync(false);return}
     const email=(u.email||'').toLowerCase(),allowed=(window.ALLOWED_EMAILS||[]).map(e=>String(e).toLowerCase().trim()).filter(Boolean);
     if(allowed.length&&!allowed.includes(email)){gateMsg(`Le compte ${u.email} n'est pas sur la liste des accès. Demandez au propriétaire du site de l'ajouter.`);await auth.signOut();return}
     try{await db.collection('meals').limit(1).get()}catch(e){gateMsg(`Le compte ${u.email} n'a pas accès aux données (règles Firestore).`);await auth.signOut();return}
-    store.user=u;state.db=db;document.body.classList.remove('locked');gate.hidden=true;setSync(true,u);store.unsubs=subscribe(db);render()});
+    clearTimeout(wait);store.user=u;state.db=db;document.body.classList.remove('locked');gate.hidden=true;setSync(true,u);store.unsubs=subscribe(db);render()});
 }
 
 /* ---------- Plaisir sucré ---------- */
