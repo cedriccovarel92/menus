@@ -231,37 +231,59 @@ function bit(tex,x,y,col,r,sc){const rot=(r()*180).toFixed(0),d=mix(col,-.22),l=
    case 'flakes':return `<ellipse cx="${x}" cy="${y}" rx="${5.5*sc}" ry="${3.2*sc}" fill="${l}" stroke="${d}" stroke-width=".7" transform="rotate(${rot} ${x} ${y})"/>`;
    case 'drop':return `<circle cx="${x}" cy="${y}" r="${2.6*sc}" fill="${l}" stroke="${d}" stroke-width=".5"/>`;
    default:return `<rect x="${x-3.8*sc}" y="${y-3.8*sc}" width="${7.6*sc}" height="${7.6*sc}" rx="${2*sc}" fill="${d}" transform="rotate(${rot} ${x} ${y})"/><circle cx="${x-1*sc}" cy="${y-1*sc}" r="${1.4*sc}" fill="${l}"/>`}}
-const P=(a,r)=>[110+r*Math.cos(a),110+r*Math.sin(a)];
+/* ---------- Assiettes à l'aquarelle, vue en perspective ---------- */
+const CX=120,CY=104,PRX=104,PRY=56;
+const f1=n=>(+n).toFixed(1);
+function wobble(cx,cy,rx,ry,r,amp,pts){pts=pts||14;const p=[];for(let i=0;i<pts;i++){const a=i/pts*6.283,k=1+(r()-.5)*amp;p.push([cx+Math.cos(a)*rx*k,cy+Math.sin(a)*ry*k])}
+  let d=`M${f1((p[0][0]+p[pts-1][0])/2)} ${f1((p[0][1]+p[pts-1][1])/2)}`;for(let i=0;i<pts;i++){const a=p[i],b=p[(i+1)%pts];d+=` Q${f1(a[0])} ${f1(a[1])} ${f1((a[0]+b[0])/2)} ${f1((a[1]+b[1])/2)}`}return d+'Z'}
+function wash(d,col,op,f){return `<path d="${d}" fill="${col}" fill-opacity="${op}" filter="url(#${f||'wcE'})"/>`}
+function mound(it,x,y,s,r){const f=food(it.nom),c=f.col,dk=mix(c,-.28),lt=mix(c,.42),w=s,h=s*.5;let o='';
+  o+=wash(wobble(x,y+h*.35,w*1.08,h*.62,r,.25),dk,.35,'wcS');
+  switch(f.tex){
+   case 'puree':o+=wash(`M${f1(x-w)} ${f1(y)} C${f1(x-w*.9)} ${f1(y-h*1.5)} ${f1(x+w*.9)} ${f1(y-h*1.6)} ${f1(x+w)} ${f1(y)} C${f1(x+w*.7)} ${f1(y+h*.6)} ${f1(x-w*.7)} ${f1(y+h*.6)} ${f1(x-w)} ${f1(y)}Z`,c,.92);
+     o+=wash(wobble(x+w*.15,y+h*.05,w*.7,h*.38,r,.3),dk,.28);
+     o+=`<path d="M${f1(x-w*.55)} ${f1(y-h*.55)} q${f1(w*.35)} ${f1(-h*.6)} ${f1(w*.75)} ${f1(-h*.15)}" stroke="${lt}" stroke-width="${f1(Math.max(1.4,s*.09))}" fill="none" stroke-linecap="round" opacity=".9" filter="url(#wcE)"/>`;
+     o+=`<path d="M${f1(x-w*.2)} ${f1(y-h*.1)} q${f1(w*.25)} ${f1(-h*.35)} ${f1(w*.5)} 0" stroke="${dk}" stroke-width="${f1(Math.max(.8,s*.05))}" fill="none" stroke-linecap="round" opacity=".45"/>`;break;
+   case 'grains':o+=wash(wobble(x,y,w,h*.85,r,.3),c,.55);for(let i=0;i<Math.round(s*1.2)+6;i++){const a=r()*6.283,rr=Math.sqrt(r());const gx=x+Math.cos(a)*w*.85*rr,gy=y-h*.2+Math.sin(a)*h*.65*rr-(1-rr)*h*.5;
+       o+=`<ellipse cx="${f1(gx)}" cy="${f1(gy)}" rx="${f1(Math.max(1.1,s*.11))}" ry="${f1(Math.max(.7,s*.065))}" transform="rotate(${(r()*180).toFixed(0)} ${f1(gx)} ${f1(gy)})" fill="${r()<.5?lt:c}" stroke="${dk}" stroke-width=".35" stroke-opacity=".6"/>`}break;
+   case 'sticks':for(let i=0;i<5;i++){const sx=x+(r()-.5)*w*1.1,sy=y-h*.1+(r()-.5)*h*.9-i*h*.12,L=s*(.9+r()*.4),rot=(r()-.5)*70;
+       o+=`<g transform="translate(${f1(sx)} ${f1(sy)}) rotate(${rot.toFixed(0)}) scale(1 .62)"><rect x="${f1(-L/2)}" y="${f1(-s*.16)}" width="${f1(L)}" height="${f1(s*.32)}" rx="${f1(s*.15)}" fill="${c}" fill-opacity=".95" filter="url(#wcE)"/><rect x="${f1(-L/2+2)}" y="${f1(-s*.14)}" width="${f1(L-4)}" height="${f1(s*.1)}" rx="${f1(s*.05)}" fill="${lt}" opacity=".8"/></g>`}break;
+   case 'strands':o+=wash(wobble(x,y,w*.95,h*.8,r,.35),c,.75);for(let i=0;i<6;i++){const sx=x+(r()-.5)*w,sy=y-h*.2+(r()-.5)*h*.8;
+       o+=`<path d="M${f1(sx-s*.35)} ${f1(sy)} q${f1(s*.2)} ${f1(-s*.25)} ${f1(s*.4)} 0 t${f1(s*.4)} 0" stroke="${i%2?dk:lt}" stroke-width="${f1(Math.max(1,s*.08))}" fill="none" stroke-linecap="round" opacity=".85"/>`}break;
+   case 'flakes':for(let i=0;i<6;i++){const px=x+(r()-.5)*w*1.2,py=y-h*.2+(r()-.5)*h*.9-(i%3)*h*.15;
+       o+=wash(wobble(px,py,s*.32,s*.2,r,.5,8),i%2?c:lt,.95);o+=`<path d="M${f1(px-s*.18)} ${f1(py)} l${f1(s*.3)} ${f1(-s*.06)}" stroke="${dk}" stroke-width=".7" opacity=".5"/>`}break;
+   case 'drop':o+=wash(wobble(x,y,w*.75,h*.55,r,.2),c,.85);o+=`<ellipse cx="${f1(x-w*.2)}" cy="${f1(y-h*.15)}" rx="${f1(w*.22)}" ry="${f1(h*.12)}" fill="#fff" opacity=".75"/>`;break;
+   default:for(let i=0;i<6;i++){const px=x+(r()-.5)*w*1.2,py=y-h*.15+(r()-.5)*h*.9-(i%3)*h*.12,q=s*(.26+r()*.08);
+       o+=`<g filter="url(#wcE)"><path d="M${f1(px-q)} ${f1(py)} l${f1(q)} ${f1(-q*.5)} l${f1(q)} ${f1(q*.5)} l${f1(-q)} ${f1(q*.5)}z" fill="${lt}"/><path d="M${f1(px-q)} ${f1(py)} l${f1(q)} ${f1(q*.5)} v${f1(q*.8)} l${f1(-q)} ${f1(-q*.5)}z" fill="${c}"/><path d="M${f1(px+q)} ${f1(py)} l${f1(-q)} ${f1(q*.5)} v${f1(q*.8)} l${f1(q)} ${f1(-q*.5)}z" fill="${dk}"/></g>`}}
+  return o}
 function plateSVG(items,kind,key,big){
-  const r=rng(key),total=items.reduce((s,i)=>s+i.g,0)||1;
-  const label=items.map(i=>`${i.nom} ${i.g} g`).join(', ');
-  let o=`<svg class="${big?'big':''}" viewBox="0 0 220 230" ${big?'':'width="54" height="56"'} role="img" aria-label="Assiette de Johan : ${esc(label)}">`;
-  o+=`<ellipse cx="110" cy="214" rx="86" ry="10" fill="var(--plate-shadow)"/>`;
-  const dens=big?1:.35;
+  const r=rng(key),total=items.reduce((s,i)=>s+i.g,0)||1,label=items.map(i=>`${i.nom} ${i.g} g`).join(', ');
+  const main=items.filter(i=>i.g>=10),small=items.filter(i=>i.g<10);
+  let o=`<svg class="wc${big?' big':''}" viewBox="0 0 240 ${big?200:180}" ${big?'':'width="84" height="64"'} role="img" aria-label="Assiette de Johan, aquarelle : ${esc(label)}">`;
+  if(big){o+=wash(wobble(CX,CY+8,118,76,r,.35,10),'#dfeadb',.55,'wcS')+wash(wobble(CX+30,CY-14,70,44,r,.5,9),'#f9e3d6',.45,'wcS')}
+  o+=wash(wobble(CX+8,CY+16,PRX*1.02,PRY*1.02,r,.08,16),'#8a7a66',.22,'wcS');
   if(kind==='bowl'){
-    o+=`<circle cx="110" cy="110" r="102" fill="var(--plate-rim)"/><circle cx="110" cy="110" r="92" fill="var(--plate)"/>`;
-    const soupItems=items.filter(i=>i.cat==='leg'||(i.cat==='fec'&&food(i.nom).tex!=='grains'));
-    const main=(soupItems.length?soupItems:items).slice().sort((a,b)=>b.g-a.g)[0];
-    const sc=food(main.nom).col;
-    o+=`<circle cx="110" cy="110" r="78" fill="${sc}"/><circle cx="110" cy="110" r="78" fill="none" stroke="${mix(sc,-.15)}" stroke-width="3"/>`;
-    for(let i=0;i<Math.round(14*dens)+2;i++){const a=r()*6.283,rr=10+r()*55,[x,y]=P(a,rr);o+=bit('puree',x,y,sc,r,1.3)}
-    items.filter(i=>!soupItems.includes(i)).forEach(it=>{const f=food(it.nom),n=Math.max(2,Math.round(it.g/3*dens));
-      for(let i=0;i<n;i++){const a=r()*6.283,rr=r()*48,[x,y]=P(a,rr);o+=bit(f.tex,x,y,f.col,r,1)}});
-    o+=`<path d="M48 70 A78 78 0 0 1 90 36" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="5" stroke-linecap="round"/>`;
-  } else {
-    o+=`<circle cx="110" cy="110" r="104" fill="var(--plate)" stroke="var(--plate-rim)" stroke-width="2"/><circle cx="110" cy="110" r="86" fill="none" stroke="var(--plate-rim)" stroke-width="1.5"/>`;
-    const minA=0.24,gap=0.05,R0=76;
-    let angs=items.map(i=>Math.max(minA,i.g/total*6.283));const sum=angs.reduce((a,b)=>a+b,0);angs=angs.map(a=>a/sum*6.283);
-    let a0=-Math.PI/2;
-    items.forEach((it,idx)=>{const f=food(it.nom),a1=a0+angs[idx],s=a0+gap/2,e=a1-gap/2,[x1,y1]=P(s,R0),[x2,y2]=P(e,R0),large=(e-s)>Math.PI?1:0;
-      const [cx0,cy0]=P((s+e)/2,4);
-      o+=`<path d="M${cx0} ${cy0} L${x1} ${y1} A${R0} ${R0} 0 ${large} 1 ${x2} ${y2} Z" fill="${f.col}" stroke="${mix(f.col,-.12)}" stroke-width="1" stroke-linejoin="round"/>`;
-      const n=Math.max(1,Math.round((e-s)*16*dens));
-      for(let i=0;i<n;i++){const aa=s+.08+r()*Math.max(.01,(e-s)-.16),rr=18+r()*(R0-28),[x,y]=P(aa,rr);o+=bit(f.tex,x,y,f.col,r,big?1:1.5)}
-      a0=a1});
-    o+=`<path d="M40 76 A76 76 0 0 1 78 40" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="4" stroke-linecap="round"/>`;
+    o+=`<path d="M${CX-PRX*.88} ${CY-6} C${CX-PRX*.84} ${CY+62} ${CX+PRX*.84} ${CY+62} ${CX+PRX*.88} ${CY-6}Z" fill="#fbf7f0" filter="url(#wcE)"/>`;
+    o+=`<path d="M${CX-PRX*.88} ${CY-6} C${CX-PRX*.84} ${CY+62} ${CX+PRX*.84} ${CY+62} ${CX+PRX*.88} ${CY-6}" fill="none" stroke="#b8ad9c" stroke-width="1.4" opacity=".7" filter="url(#wcE)"/>`;
+    o+=wash(`M${CX+PRX*.2} ${CY+42} C${CX+PRX*.55} ${CY+34} ${CX+PRX*.8} ${CY+12} ${CX+PRX*.86} ${CY}L${CX+PRX*.7} ${CY+4}Z`,'#c9bfae',.45);
+    o+=`<path d="M${CX-PRX*.62} ${CY+26} q${PRX*.62} ${16} ${PRX*1.24} 0" stroke="#c4613f" stroke-width="2.2" fill="none" opacity=".55" filter="url(#wcE)"/>`;
+    o+=wash(wobble(CX,CY-6,PRX*.9,PRY*.6,r,.04,18),'#fdfbf7',1)+`<ellipse cx="${CX}" cy="${CY-6}" rx="${PRX*.9}" ry="${PRY*.6}" fill="none" stroke="#b8ad9c" stroke-width="1.2" opacity=".6"/>`;
+    const soup=(items.filter(i=>i.cat==='leg'||(i.cat==='fec'&&food(i.nom).tex!=='grains'))[0]||main[0]||items[0]);const sc=food(soup.nom).col;
+    o+=wash(wobble(CX,CY-4,PRX*.78,PRY*.48,r,.06,16),sc,.95)+wash(wobble(CX-14,CY-10,PRX*.4,PRY*.2,r,.4,10),mix(sc,.4),.6);
+    o+=`<path d="M${CX-30} ${CY-4} q14 -9 28 -1 t28 1" stroke="${mix(sc,-.25)}" stroke-width="1.3" fill="none" opacity=".55"/>`;
+    items.filter(i=>i!==soup).forEach((it,k)=>{const a=-2.4+k*1.5,x=CX+Math.cos(a)*PRX*.4,y=CY-4+Math.sin(a)*PRY*.22;o+=mound(it,x,y,big?13:16,r)});
+  }else{
+    o+=wash(wobble(CX,CY,PRX,PRY,r,.03,20),'#ffffff',1)+`<ellipse cx="${CX}" cy="${CY}" rx="${PRX}" ry="${PRY}" fill="none" stroke="#b9ae9d" stroke-width="1.3" opacity=".65" filter="url(#wcE)"/>`;
+    o+=`<path d="M${CX-PRX+4} ${CY+6} C${CX-PRX*.6} ${CY+PRY+2} ${CX+PRX*.6} ${CY+PRY+2} ${CX+PRX-4} ${CY+6}" fill="none" stroke="#c9bfae" stroke-width="5" opacity=".35" filter="url(#wcS)"/>`;
+    o+=`<ellipse cx="${CX}" cy="${CY+3}" rx="${PRX*.76}" ry="${PRY*.7}" fill="#f6f1e9" opacity=".8" filter="url(#wcE)"/>`;
+    o+=`<path d="M${CX-PRX*.82} ${CY-14} q${PRX*.3} ${-PRY*.55} ${PRX*.75} ${-PRY*.72}" stroke="#ffffff" stroke-width="4" fill="none" opacity=".9" stroke-linecap="round"/>`;
+    const n=main.length||1,spots=main.map((it,k)=>{const a=-Math.PI/2+(k+.5)/n*6.283+(r()-.5)*.3,rr=n===1?0:PRX*.44;return {it,x:CX+Math.cos(a)*rr,y:CY+3+Math.sin(a)*rr*.52}}).sort((a,b)=>a.y-b.y);
+    spots.forEach(p=>{const s=(n===1?50:Math.max(18,Math.min(42,13+Math.sqrt(p.it.g/total)*44)));o+=mound(p.it,p.x,p.y,s,r)});
+    small.forEach((it,k)=>{const host=spots[k%Math.max(1,spots.length)]||{x:CX,y:CY};o+=mound(it,host.x+(r()-.5)*10,host.y-10,big?7:9,r)});
   }
+  if(big){o+=`<g filter="url(#wcE)" opacity=".85"><ellipse cx="214" cy="${CY+38}" rx="13" ry="7" transform="rotate(-28 214 ${CY+38})" fill="#d8dee3"/><path d="M206 ${CY+44} L176 ${CY+78}" stroke="#c3cbd2" stroke-width="5" stroke-linecap="round"/><path d="M206 ${CY+44} L178 ${CY+76}" stroke="#eef1f3" stroke-width="1.5" stroke-linecap="round"/></g>`}
   return o+'</svg>'}
+
 function portionFigure(m){
   const items=portionOf(m),total=items.reduce((s,i)=>s+i.g,0);
   const bycat={};items.forEach(i=>bycat[i.cat]=(bycat[i.cat]||0)+i.g);
@@ -292,13 +314,13 @@ function portionOf(m){
 
 /* ---------- État & stockage ---------- */
 const LS='menus-johan-v1';
-const state={tab:'calendrier',week:BASE_WEEK,dayFilter:null,imported:{},checks:{},extras:{},foods:{},sweets:{},ratings:{},db:null,files:[],pending:null,busy:false,swap:null,cook:null};
+const state={tab:'calendrier',week:BASE_WEEK,dayFilter:0,imported:{},checks:{},extras:{},foods:{},sweets:{},ratings:{},db:null,files:[],pending:null,busy:false,swap:null,cook:null};
 function loadLocal(){try{const v=JSON.parse(localStorage.getItem(LS)||'{}');state.imported=v.meals||{};state.checks=v.checks||{};state.extras=v.extras||{};state.foods=v.foods||{};state.sweets=v.sweets||{};state.ratings=v.ratings||{}}catch(e){}}
 function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({meals:state.imported,checks:state.checks,extras:state.extras,foods:state.foods,sweets:state.sweets,ratings:state.ratings}))}catch(e){}}
 loadLocal();
 const getMeal=(date,slot)=>{const k=`${date}_${slot}`,im=state.imported[k];if(im)return im.empty?null:im;return BASE[k]||null};
 const weekHasMeals=mon=>{for(let i=0;i<7;i++)for(const s of ['midi','soir'])if(getMeal(addDays(mon,i),s))return true;return false};
-(function initWeek(){const cur=mondayOf(TODAY);state.week=weekHasMeals(cur)?cur:BASE_WEEK})();
+(function initWeek(){state.week=mondayOf(TODAY);state.dayFilter=dayIdx(TODAY)})();
 
 const store={user:null,mode:window.FIREBASE_CONFIG?'firebase':'claude',unsubs:[]};
 const wq={};
@@ -601,6 +623,12 @@ const main=document.getElementById('main');
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,3200)}
 function setTab(t,opts={}){state.tab=t;state.editing=null;state.swap=null;state.libPlan=null;if(t!=='importer')state.importHint=null;try{history.replaceState(null,'','#'+t)}catch(e){}render();if(!opts.keepScroll)window.scrollTo({top:0})}
 document.querySelectorAll('.tabbar button').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+function curDay(){const d=state.dayFilter;return Number.isInteger(d)&&d>=0&&d<7?d:(mondayOf(TODAY)===state.week?dayIdx(TODAY):0)}
+const JC=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+function dayTabs(){const cur=curDay();let h='<div class="daytabs" role="tablist" aria-label="Jours de la semaine">';
+  for(let i=0;i<7;i++){const d=addDays(state.week,i),n=['midi','soir'].filter(s=>getMeal(d,s)).length;
+    h+=`<button role="tab" class="dtab${i===cur?' on':''}${d===TODAY?' today':''}" data-dtab="${i}" aria-selected="${i===cur}" aria-label="${JOURS[i]} ${fmtDay(d)}${d===TODAY?', aujourd\'hui':''}"><span class="dn">${JC[i]}</span><b>${parseISO(d).getDate()}</b><span class="dots">${'<i></i>'.repeat(n)}</span></button>`}
+  return h+'</div>'}
 function weekbar(){
   const isCur=mondayOf(TODAY)===state.week;
   return `<div class="weekbar"><button class="iconbtn" data-wk="-7" aria-label="Semaine précédente">‹</button>
@@ -616,15 +644,16 @@ function render(){
   else if(state.tab==='biblio')main.innerHTML=renderLibrary();
   else if(state.tab==='johan')main.innerHTML=weekbar()+renderJohan();
   else renderImport();
-  main.querySelectorAll('[data-wk]').forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.wk;state.editing=null;state.week=v==='today'?mondayOf(TODAY):addDays(state.week,+v);state.dayFilter=null;render()}));
+  main.querySelectorAll('[data-wk]').forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.wk;state.editing=null;const k=curDay();state.week=v==='today'?mondayOf(TODAY):addDays(state.week,+v);state.dayFilter=v==='today'?dayIdx(TODAY):k;render()}));
+  main.querySelectorAll('[data-dtab]').forEach(b=>b.addEventListener('click',()=>{state.dayFilter=+b.dataset.dtab;state.editing=null;const y=window.scrollY;render();window.scrollTo(0,Math.min(y,document.querySelector('.daytabs')?.offsetTop||0))}));
   bind();
 }
 function renderCalendar(){
   const sw=state.swap;
   const top=`<div class="calbar"><button class="btn${sw?' primary':''}" data-swap>${sw?'Terminer':'Déplacer ou échanger des repas'}</button>${sw?`<span class="muted">${sw.src?'Touchez la case de destination, même dans une autre semaine. Touchez à nouveau le repas pour annuler.':'Touchez le repas à déplacer.'}</span>`:''}</div>`;
-  if(!weekHasMeals(state.week)&&!(sw&&sw.src))return top+emptyWeek();
-  let h=top+'<div class="cal">';
-  for(let i=0;i<7;i++){const date=addDays(state.week,i),today=date===TODAY;
+  if(!weekHasMeals(state.week)&&!(sw&&sw.src))return top+dayTabs()+emptyWeek();
+  let h=top+dayTabs()+'<div class="cal one">';
+  {const i=curDay(),date=addDays(state.week,i),today=date===TODAY;
     h+=`<section class="day${today?' today':''}"><h3>${JOURS[i]} <span>${today?'<span class="tag">Aujourd\'hui · </span>':''}${fmtDay(date)}</span></h3>`;
     for(const s of ['midi','soir']){const id=`${date}_${s}`,m=getMeal(date,s),lab=s==='midi'?'Midi':'Soir';
       if(!m){if(sw&&sw.src)h+=`<button class="meal empty tgt" data-sw="${id}"><span class="pill ${s}">${lab}</span> Déposer ici</button>`;
@@ -640,12 +669,11 @@ function renderCalendar(){
 function emptyWeek(){return `<div class="empty-week"><h3>Aucun repas cette semaine</h3><p class="muted">Collez ou déposez un menu dans l'onglet Importer : il sera placé sur les jours que vous choisirez.</p><button class="btn primary" data-go="importer">Importer un menu</button></div>`}
 function weekMealList(){const out=[];for(let i=0;i<7;i++)for(const s of ['midi','soir']){const d=addDays(state.week,i),m=getMeal(d,s);if(m)out.push({...m,_i:i,_id:`${d}_${s}`})}return out}
 function renderRecipes(){
-  const list=weekMealList();if(!list.length)return emptyWeek();
-  if(state.dayFilter===null){const t=TODAY>=state.week&&TODAY<=addDays(state.week,6)?dayIdx(TODAY):'all';state.dayFilter=t}
-  let h=`<div class="chips" role="group" aria-label="Filtrer par jour"><button class="chip" data-day="all" aria-pressed="${state.dayFilter==='all'}">Toute la semaine</button>`;
-  JOURS.forEach((j,i)=>{if(list.some(m=>m._i===i))h+=`<button class="chip" data-day="${i}" aria-pressed="${state.dayFilter===i}">${j}</button>`});
-  h+='</div><div class="recipes">';
-  list.filter(m=>state.dayFilter==='all'||m._i===state.dayFilter).forEach(m=>h+=recipeCard(m));
+  const list=weekMealList();if(!list.length)return dayTabs()+emptyWeek();
+  const cur=curDay(),day=list.filter(m=>m._i===cur).sort((a,b)=>a.slot==='midi'?-1:1);
+  let h=dayTabs()+'<div class="recipes">';
+  if(!day.length)h+=`<div class="empty-week"><h3>Rien de prévu ${JOURS[cur].toLowerCase()} ${fmtDay(addDays(state.week,cur))}</h3><p class="muted">Choisissez un autre jour, replacez une recette depuis la Bibliothèque, ou importez un menu.</p><div class="eactions" style="justify-content:center"><button class="btn primary" data-go="biblio">Bibliothèque</button><button class="btn" data-go="importer">Importer</button></div></div>`;
+  day.forEach(m=>h+=recipeCard(m));
   return h+'</div>'}
 function recipeCard(m){
   if(state.editing===m._id)return `<article class="rcard" id="r-${m._id}"><header><div class="meta"><span class="pill ${m.slot}">${JOURS[m._i]} ${m.slot}</span><span>Modifier la fiche</span></div><h2>${esc(m.titre)}</h2></header><div style="grid-column:1/-1">${editorHTML(m,'re')}
@@ -1007,7 +1035,7 @@ async function commitPending(){
       courses:m.courses,etapes:m.etapes,etapeBebe:m.etapeBebe,conseils:m.conseils,recetteFournie:m.recetteFournie,source:p.via||'',addedAt:new Date().toISOString()};
     await saveMeal(rec);n++;if(!first||tg.date<first)first=tg.date}
   state.pending=null;state.files=[];state.draft='';
-  if(first){state.week=mondayOf(first);state.dayFilter=null}
+  if(first){state.week=mondayOf(first);state.dayFilter=dayIdx(first)}
   if(ns&&!n){setTab('sucre');toast(`${ns} recette${ns>1?'s':''} ajoutée${ns>1?'s':''} à Plaisir sucré`);return}
   setTab('calendrier');toast(`${n} repas ajouté${n>1?'s':''} · semaine ${weekLabel(state.week)}${ns?` · ${ns} dans Plaisir sucré`:''}`)}
 
@@ -1016,7 +1044,7 @@ function bind(){
   main.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>setTab(b.dataset.go));
   main.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{const id=b.dataset.open,d=id.split('_')[0];state.dayFilter=dayIdx(d);setTab('recettes');
     requestAnimationFrame(()=>document.getElementById('r-'+id)?.scrollIntoView({behavior:'smooth',block:'start'}))});
-  main.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{const v=b.dataset.day;state.dayFilter=v==='all'?'all':+v;render()});
+  
   main.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const back=!!BASE[b.dataset.del];if(b.dataset.confirm){deleteMeal(b.dataset.del);toast(back?'Fiche d\'origine rétablie':'Repas retiré du calendrier')}else{b.dataset.confirm='1';b.textContent='Confirmer';setTimeout(()=>{if(b.isConnected){delete b.dataset.confirm;b.textContent=b.dataset.lbl}},4000)}});
   main.querySelectorAll('[data-cook]').forEach(b=>b.onclick=()=>openCook('meal',b.dataset.cook));
   main.querySelectorAll('[data-star]').forEach(b=>b.onclick=()=>{const v=setRating(b.dataset.rk,b.dataset.rid,+b.dataset.star);rerender();
@@ -1033,7 +1061,7 @@ function bind(){
   main.querySelectorAll('[data-planf]').forEach(f=>f.onsubmit=async e=>{e.preventDefault();const id=f.dataset.planf,r=state.ratings[id],rec=libRecipe(id),d=state.libDate,sl=state.libSlot||'midi';if(!r||!rec||!d)return;
     await saveMeal(clean({...rec,titre:r.titre,date:d,slot:sl,base:false,fromLibrary:true,addedAt:new Date().toISOString()}));
     state.ratings[id]={...r,lastDate:d};if(state.db)queued('r'+id,()=>state.db.collection('ratings').doc(id).set(clean(state.ratings[id])));saveLocal();
-    state.libPlan=null;state.week=mondayOf(d);state.dayFilter=null;setTab('calendrier');toast(`${r.titre.split(/[,&]/)[0]} ajouté : ${fmtLong(d).toLowerCase()} ${sl}`)});
+    state.libPlan=null;state.week=mondayOf(d);state.dayFilter=dayIdx(d);setTab('calendrier');toast(`${r.titre.split(/[,&]/)[0]} ajouté : ${fmtLong(d).toLowerCase()} ${sl}`)});
   main.querySelectorAll('[data-cooks]').forEach(b=>b.onclick=()=>openCook('sweet',b.dataset.cooks));
   main.querySelectorAll('[data-swap]').forEach(b=>b.onclick=()=>{state.swap=state.swap?null:{src:null};rerender()});
   main.querySelectorAll('[data-sw]').forEach(b=>b.onclick=async()=>{const id=b.dataset.sw,sw=state.swap;if(!sw)return;
